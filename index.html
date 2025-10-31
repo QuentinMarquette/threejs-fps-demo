@@ -1,80 +1,94 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js V2 - Arme + Tirs + Textures</title>
+  <title>FPS Three.js - Arme + Tirs + Textures</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <style>
-    body { margin: 0; overflow: hidden; background: #111; font-family: Arial; }
-    #blocker {
-      position: absolute; inset: 0; background: rgba(0,0,0,0.9);
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      color: white; text-align: center; z-index: 1000;
-    }
-    #instructions {
-      cursor: pointer; padding: 30px; background: #222; border-radius: 15px; max-width: 500px;
-    }
-    #crosshair {
-      position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
-      pointer-events: none; opacity: 0;
-    }
-    #crosshair::before, #crosshair::after {
-      content: ''; position: absolute; background: lime; left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
-    }
+    body { margin: 0; font-family: Arial; }
+    #blocker { position: absolute; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+    #instructions { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-size: 14px; cursor: pointer; color: white; }
+    #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px; pointer-events: none; opacity: 0; }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: lime; left: 50%; top: 50%; transform: translate(-50%, -50%); }
     #crosshair::before { width: 2px; height: 20px; }
     #crosshair::after { width: 20px; height: 2px; }
-    #ui {
-      position: absolute; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; z-index: 100;
-    }
-    #debug {
-      position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 12px; background: rgba(0,0,0,0.7); padding: 5px; border-radius: 5px; z-index: 100;
-    }
+    #ui { position: absolute; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; z-index: 100; font-size: 14px; }
   </style>
 </head>
 <body>
-
   <div id="blocker">
     <div id="instructions">
-      <h2>CLIQUE POUR JOUER</h2>
-      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic gauche</strong> = tirer | <strong>R</strong> = recharger</p>
+      <span style="font-size: 36px">Cliquez pour jouer</span>
+      <br />
+      (ZQSD = bouger | Souris = regarder | Clic gauche = tirer | R = recharger)
+      <br />
     </div>
   </div>
+
   <div id="crosshair"></div>
   <div id="ui">Munitions: <span id="ammo">30/30</span></div>
-  <div id="debug">Chargement...</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/audio/AudioListener.js"></script>
-
-  <script>
-    if (typeof THREE === 'undefined') {
-      document.getElementById('debug').textContent = 'ERREUR: Three.js non chargé';
-      throw new Error('Three.js failed to load');
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.168.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.168.0/examples/jsm/"
+      }
     }
-    document.getElementById('debug').textContent = 'Three.js OK';
+  </script>
 
-    // === SCÈNE ===
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+    camera.position.y = 10;
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
+    scene.fog = new THREE.Fog(0x87ceeb, 0, 750);
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1.6, 5);
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(1, 1, 1).normalize();
+    scene.add(light);
+
+    const floorTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(10, 10);
+    const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, color: 0x444444 });
+    const floorGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+    floorGeometry.rotateX(-Math.PI / 2);
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    scene.add(floor);
+
+    const wallTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/brick_diffuse.jpg');
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(4, 1);
+    const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture, color: 0x444444 });
+
+    const objects = [];
+    const sphereGeometry = new THREE.SphereGeometry(20, 32, 16);
+    for (let i = 0; i < 1000; i++) {
+      const cube = new THREE.Mesh(sphereGeometry, wallMaterial);
+      cube.position.x = Math.random() * 800 - 400;
+      cube.position.y = Math.random() * 800 - 400;
+      cube.position.z = Math.random() * 800 - 400;
+      cube.rotation.x = Math.random() * 2 * Math.PI;
+      cube.rotation.y = Math.random() * 2 * Math.PI;
+      cube.rotation.z = Math.random() * 2 * Math.PI;
+      cube.scale.x = Math.random() + 0.5;
+      cube.scale.y = Math.random() + 0.5;
+      cube.scale.z = Math.random() + 0.5;
+      scene.add(cube);
+      objects.push(cube);
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // === AUDIO ===
-    const listener = new THREE.AudioListener();
-    camera.add(listener);
-
-    // === CONTRÔLES ===
-    const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+    const controls = new PointerLockControls(camera, document.body);
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
     const crosshair = document.getElementById('crosshair');
@@ -83,177 +97,122 @@
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
-      document.getElementById('debug').textContent = 'JEU ACTIF';
     });
     controls.addEventListener('unlock', () => {
       blocker.style.display = 'block';
       crosshair.style.opacity = '0';
     });
 
-    // === TEXTURES RÉELLES ===
-    const loader = new THREE.TextureLoader();
-    const wallTexture = loader.load('https://threejs.org/examples/textures/brick_diffuse.jpg'); // Exemple gratuit Three.js [](grok_render_citation_card_json={"cardIds":["b2b1ae"]})
-    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-    wallTexture.repeat.set(4, 1);
-    const floorTexture = loader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg'); // Exemple gratuit Three.js [](grok_render_citation_card_json={"cardIds":["1e216a"]})
-    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(10, 10);
+    scene.add(controls.getObject());
 
-    // === SOL ===
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(50, 50),
-      new THREE.MeshStandardMaterial({ map: floorTexture })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
+    const onKeyDown = (event) => {
+      switch (event.code) {
+        case 'KeyW': moveForward = true; break;
+        case 'KeyA': moveLeft = true; break;
+        case 'KeyS': moveBackward = true; break;
+        case 'KeyD': moveRight = true; break;
+        case 'KeyR': reload(); break;
+      }
+    };
 
-    // === LUMIÈRE ===
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const light = new THREE.DirectionalLight(0xffffff, 0.8);
-    light.position.set(10, 20, 10);
-    light.castShadow = true;
-    scene.add(light);
+    const onKeyUp = (event) => {
+      switch (event.code) {
+        case 'KeyW': moveForward = false; break;
+        case 'KeyA': moveLeft = false; break;
+        case 'KeyS': moveBackward = false; break;
+        case 'KeyD': moveRight = false; break;
+      }
+    };
 
-    // === MURS AVEC TEXTURES ===
-    const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture });
-    const walls = [];
-    function addWall(x, z, w, d) {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
-      wall.position.set(x, 1.5, z);
-      wall.castShadow = wall.receiveShadow = true;
-      scene.add(wall);
-      walls.push(wall);
-    }
-    addWall(0, 0, 12, 1);
-    addWall(6, 6, 1, 12);
-    addWall(-6, 6, 1, 12);
-    addWall(0, 12, 12, 1);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
 
-    // === ARME (SPRITE 2D pour simplicité) ===
-    const gunSprite = loader.load('https://opengameart.org/sites/default/files/gun_sprite_preview.png'); // Exemple gratuit OpenGameArt [](grok_render_citation_card_json={"cardIds":["233013"]})
-    const gunMaterial = new THREE.SpriteMaterial({ map: gunSprite });
+    // Arme (sprite simple)
+    const gunTexture = new THREE.TextureLoader().load('https://opengameart.org/sites/default/files/gun_sprite_preview.png');
+    const gunMaterial = new THREE.SpriteMaterial({ map: gunTexture });
     const gun = new THREE.Sprite(gunMaterial);
     gun.position.set(0.3, -0.3, -0.5);
-    gun.scale.set(0.5, 0.5, 1);
+    gun.scale.set(0.2, 0.2, 1);
     camera.add(gun);
 
-    // === SONS ===
-    const shootSound = new THREE.Audio(listener);
-    shootSound.setBuffer(new THREE.AudioLoader().load('https://freesound.org/data/previews/387/387182_4187614-lq.mp3')); // Exemple gratuit Freesound pour tir [](grok_render_citation_card_json={"cardIds":["76e961"]})
-    const reloadSound = new THREE.Audio(listener);
-    reloadSound.setBuffer(new THREE.AudioLoader().load('https://freesound.org/data/previews/155/15545_15545-lq.mp3')); // Exemple gratuit Freesound pour reload [](grok_render_citation_card_json={"cardIds":["c539d4"]})
-
-    // === TIRS ===
+    // Tirs
     const bullets = [];
-    const ammo = 30;
     let currentAmmo = 30;
     let isReloading = false;
+    function shoot() {
+      if (currentAmmo <= 0 || isReloading) return;
+      currentAmmo--;
+      updateAmmoUI();
+      const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+      bullet.position.copy(camera.position);
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      bullet.userData.velocity = direction.multiplyScalar(50);
+      scene.add(bullet);
+      bullets.push(bullet);
+    }
+    document.addEventListener('click', shoot);
+
+    function reload() {
+      if (isReloading || currentAmmo === 30) return;
+      isReloading = true;
+      setTimeout(() => {
+        currentAmmo = 30;
+        updateAmmoUI();
+        isReloading = false;
+      }, 2000);
+    }
 
     function updateAmmoUI() {
       document.getElementById('ammo').textContent = `${currentAmmo}/30`;
     }
 
-    function shoot() {
-      if (currentAmmo <= 0 || isReloading) return;
-      currentAmmo--;
-      updateAmmoUI();
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    let prevTime = performance.now();
 
-      // Son
-      shootSound.play();
-
-      // Balle
-      const bulletGeo = new THREE.SphereGeometry(0.05);
-      const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-      const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-      bullet.position.copy(camera.position);
-      const direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
-      bullet.velocity = direction.multiplyScalar(50);
-      scene.add(bullet);
-      bullets.push(bullet);
-    }
-
-    document.addEventListener('click', shoot);
-
-    // Rechargement
-    document.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyR' && currentAmmo < 30 && !isReloading) {
-        isReloading = true;
-        reloadSound.play();
-        setTimeout(() => {
-          currentAmmo = 30;
-          updateAmmoUI();
-          isReloading = false;
-        }, 2000);
-      }
-    });
-
-    // === MOUVEMENT ===
-    const move = { forward: false, backward: false, left: false, right: false };
-    const speed = 10;
-
-    document.addEventListener('keydown', e => {
-      if (e.code === 'KeyW') move.forward = true;
-      if (e.code === 'KeyS') move.backward = true;
-      if (e.code === 'KeyA') move.left = true;
-      if (e.code === 'KeyD') move.right = true;
-    });
-    document.addEventListener('keyup', e => {
-      if (e.code === 'KeyW') move.forward = false;
-      if (e.code === 'KeyS') move.backward = false;
-      if (e.code === 'KeyA') move.left = false;
-      if (e.code === 'KeyD') move.right = false;
-    });
-
-    // === COLLISION JOUEUR ===
-    function checkCollision() {
-      const playerBox = new THREE.Box3().setFromObject(camera);
-      for (const wall of walls) {
-        if (playerBox.intersectsBox(new THREE.Box3().setFromObject(wall))) return true;
-      }
-      return false;
-    }
-
-    // === BOUCLE ===
-    const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
-      const delta = clock.getDelta();
 
-      // Mouvement joueur
-      if (controls.isLocked) {
-        const direction = new THREE.Vector3();
-        if (move.forward) direction.z -= 1;
-        if (move.backward) direction.z += 1;
-        if (move.left) direction.x -= 1;
-        if (move.right) direction.x += 1;
-        direction.normalize();
+      const time = performance.now();
+      const delta = (time - prevTime) / 1000;
 
-        const velocity = direction.multiplyScalar(speed * delta);
-        const oldPos = camera.position.clone();
+      velocity.x -= velocity.x * 10.0 * delta;
+      velocity.z -= velocity.z * 10.0 * delta;
+      velocity.y -= 9.8 * 100.0 * delta;
 
-        controls.moveRight(velocity.x);
-        controls.moveForward(velocity.z);
+      direction.z = Number(moveForward) - Number(moveBackward);
+      direction.x = Number(moveRight) - Number(moveLeft);
+      direction.normalize();
 
-        if (checkCollision()) camera.position.copy(oldPos);
+      if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+      if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+      controls.moveRight(-velocity.x * delta);
+      controls.moveForward(-velocity.z * delta);
+      controls.getObject().position.y += (velocity.y * delta);
+
+      if (controls.getObject().position.y < 10) {
+        velocity.y = 0;
+        controls.getObject().position.y = 10;
+        canJump = true;
       }
 
       // Mouvement balles
       bullets.forEach((bullet, i) => {
-        bullet.position.add(bullet.velocity.clone().multiplyScalar(delta));
-        if (bullet.position.length() > 100) {
+        bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta));
+        if (bullet.position.length() > 1000) {
           scene.remove(bullet);
           bullets.splice(i, 1);
         }
       });
 
+      prevTime = time;
       renderer.render(scene, camera);
     }
 
     animate();
-    updateAmmoUI();
-    document.getElementById('debug').textContent = 'Prêt ! Clique pour jouer.';
 
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
