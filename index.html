@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - FINAL</title>
+  <title>FPS Three.js - FINAL FIX</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     #blocker {
@@ -33,8 +33,8 @@
 
   <div id="blocker">
     <div id="instructions">
-      <h2>CLIQUE POUR JOUER</h2>
-      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = regarder | <strong>Clic</strong> = tirer | <strong>R</strong> = recharger</p>
+      <h2>CLIQUE OU ATTENDS 1s</h2>
+      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer</p>
     </div>
   </div>
   <div id="crosshair"></div>
@@ -57,21 +57,28 @@
     document.body.appendChild(renderer.domElement);
 
     const controls = new THREE.PointerLockControls(camera, renderer.domElement);
-    const blocker = document.getById('blocker');
+    const blocker = document.getElementById('blocker');  // CORRIGÉ
     const instructions = document.getElementById('instructions');
     const crosshair = document.getElementById('crosshair');
 
     instructions.addEventListener('click', () => controls.lock());
+
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
     });
+
     controls.addEventListener('unlock', () => {
       blocker.style.display = 'block';
       crosshair.style.opacity = '0';
     });
 
-    // === SOL (visible !) ===
+    // DÉMARRAGE AUTO
+    setTimeout(() => {
+      if (!controls.isLocked) controls.lock();
+    }, 500);
+
+    // SOL
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(100, 100),
       new THREE.MeshStandardMaterial({ color: 0x228B22 })
@@ -81,15 +88,14 @@
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // === LUMIÈRE ===
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambient);
+    // LUMIÈRE
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const light = new THREE.DirectionalLight(0xffffff, 0.8);
     light.position.set(10, 20, 10);
     light.castShadow = true;
     scene.add(light);
 
-    // === MURS (labyrinthe simple) ===
+    // MURS
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
     const walls = [];
     function addWall(x, z, w, d) {
@@ -103,17 +109,8 @@
     addWall(10, 10, 1, 20);
     addWall(-10, 10, 1, 20);
     addWall(0, 20, 20, 1);
-    addWall(5, 15, 10, 1);
 
-    // === ARME (sprite) ===
-    const gunTexture = new THREE.TextureLoader().load('https://i.imgur.com/5e5e5e5.png');
-    const gun = new THREE.Sprite(new THREE.SpriteMaterial({ map: gunTexture }));
-    gun.position.set(0.3, -0.3, -0.5);
-    gun.scale.set(0.4, 0.4, 1);
-    camera.add(gun);
-    scene.add(camera);
-
-    // === TIRS ===
+    // TIRS
     const bullets = [];
     let ammo = 30;
     function shoot() {
@@ -132,16 +129,8 @@
       bullets.push(bullet);
     }
     document.addEventListener('click', shoot);
-    document.addEventListener('keydown', e => {
-      if (e.code === 'KeyR' && ammo < 30) {
-        setTimeout(() => {
-          ammo = 30;
-          document.getElementById('ammo').textContent = `${ammo}/30`;
-        }, 2000);
-      }
-    });
 
-    // === MOUVEMENT ===
+    // MOUVEMENT
     const move = { forward: false, backward: false, left: false, right: false };
     document.addEventListener('keydown', e => {
       if (e.code === 'KeyW') move.forward = true;
@@ -156,7 +145,7 @@
       if (e.code === 'KeyD') move.right = false;
     });
 
-    // === COLLISION ===
+    // COLLISION
     function checkCollision() {
       const box = new THREE.Box3().setFromObject(camera);
       for (const w of walls) {
@@ -165,7 +154,7 @@
       return false;
     }
 
-    // === BOUCLE ===
+    // BOUCLE
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
@@ -186,7 +175,6 @@
         if (checkCollision()) camera.position.copy(old);
       }
 
-      // Balles
       bullets.forEach((b, i) => {
         b.position.add(b.velocity.clone().multiplyScalar(delta));
         if (b.position.length() > 200) {
