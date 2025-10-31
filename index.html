@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - ULTIMATE</title>
+  <title>FPS Three.js - FONCTIONNEL</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: Arial; }
+    body { margin: 0; overflow: hidden; background: #000; }
     #blocker {
       position: absolute; inset: 0; background: rgba(0,0,0,0.9);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
-      color: white; text-align: center; z-index: 1000;
+      color: white; font-family: Arial; text-align: center; z-index: 1000;
     }
-    #instructions { cursor: pointer; padding: 30px; background: #222; border-radius: 15px; max-width: 500px; }
+    #instructions {
+      cursor: pointer; padding: 30px; background: #222; border-radius: 15px; max-width: 500px;
+    }
     #crosshair {
       position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
       pointer-events: none; opacity: 0; transition: opacity 0.3s;
@@ -22,7 +24,6 @@
     }
     #crosshair::before { width: 2px; height: 20px; }
     #crosshair::after { width: 20px; height: 2px; }
-    #error { color: #ff6b6b; margin-top: 15px; font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -31,21 +32,20 @@
     <div id="instructions">
       <h2>Clique pour jouer</h2>
       <p><strong>ZQSD</strong> = déplacer | <strong>Souris</strong> = regarder</p>
-      <p id="error"></p>
+      <p id="status" style="color:#ff6b6b; margin-top:15px;"></p>
     </div>
   </div>
   <div id="crosshair"></div>
 
-  <!-- Three.js + PointerLock via CDN -->
+  <!-- Three.js + PointerLockControls (CHEMIN CORRIGÉ) -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js"></script>
 
-  <script>
-    // === DÉTECTION file:// + MESSAGE D'ERREUR ===
-    const errorDiv = document.getElementById('error');
-    if (window.location.protocol === 'file:') {
-      errorDiv.innerHTML = 'Pointer Lock bloqué en file:// → <br><strong>Utilise un serveur local</strong> (Live Server, Python, etc.)<br>OU continue : le jeu marchera sans verrouillage souris.';
-    }
+  <script type="module">
+    import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js';
+
+    const status = document.getElementById('status');
+    status.textContent = 'Chargement...';
 
     // === SCÈNE ===
     const scene = new THREE.Scene();
@@ -60,8 +60,8 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // === CONTRÔLES (Pointer Lock) ===
-    const controls = new THREE.PointerLockControls(camera, document.body);
+    // === CONTRÔLES ===
+    const controls = new PointerLockControls(camera, document.body);
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
     const crosshair = document.getElementById('crosshair');
@@ -73,6 +73,7 @@
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
+      status.textContent = '';
     });
 
     controls.addEventListener('unlock', () => {
@@ -90,8 +91,7 @@
     scene.add(floor);
 
     // === LUMIÈRE ===
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambient);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const light = new THREE.DirectionalLight(0xffffff, 0.8);
     light.position.set(10, 20, 10);
     light.castShadow = true;
@@ -99,10 +99,9 @@
     light.shadow.mapSize.height = 2048;
     scene.add(light);
 
-    // === MURS (labyrinthe simple) ===
+    // === MURS ===
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
     const walls = [];
-
     function addWall(x, z, w, d) {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
       wall.position.set(x, 1.5, z);
@@ -110,7 +109,6 @@
       scene.add(wall);
       walls.push(wall);
     }
-
     addWall(0, 0, 12, 1);
     addWall(6, 6, 1, 12);
     addWall(-6, 6, 1, 12);
@@ -120,8 +118,6 @@
     // === MOUVEMENT ===
     const move = { forward: false, backward: false, left: false, right: false };
     const speed = 10;
-    const velocity = new THREE.Vector3();
-    const direction = new THREE.Vector3();
 
     document.addEventListener('keydown', e => {
       switch (e.code) {
@@ -140,7 +136,7 @@
       }
     });
 
-    // === COLLISION BASIQUE ===
+    // === COLLISION ===
     function checkCollision() {
       const playerBox = new THREE.Box3().setFromObject(camera);
       for (const wall of walls) {
@@ -158,15 +154,16 @@
       const delta = clock.getDelta();
 
       if (controls.isLocked) {
-        velocity.x = velocity.z = 0;
-        direction.z = Number(move.forward) - Number(move.backward);
-        direction.x = Number(move.right) - Number(move.left);
+        const direction = new THREE.Vector3();
+        if (move.forward) direction.z -= 1;
+        if (move.backward) direction.z += 1;
+        if (move.left) direction.x -= 1;
+        if (move.right) direction.x += 1;
         direction.normalize();
 
-        if (move.forward || move.backward) velocity.z = -direction.z * speed * delta;
-        if (move.left || move.right) velocity.x = -direction.x * speed * delta;
-
+        const velocity = direction.multiplyScalar(speed * delta);
         const oldPos = camera.position.clone();
+
         controls.moveRight(velocity.x);
         controls.moveForward(velocity.z);
 
@@ -177,9 +174,12 @@
 
       renderer.render(scene, camera);
     }
+
+    // Démarrage
+    status.textContent = 'Prêt ! Clique pour jouer.';
     animate();
 
-    // === RESIZE ===
+    // Resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
