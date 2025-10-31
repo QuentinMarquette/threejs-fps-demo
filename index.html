@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - FINAL FIX</title>
+  <title>FPS Three.js - NO CORS, NO MODULE</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     #blocker {
@@ -33,17 +33,24 @@
 
   <div id="blocker">
     <div id="instructions">
-      <h2>CLIQUE OU ATTENDS 1s</h2>
+      <h2>CLIQUE POUR JOUER</h2>
       <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer</p>
     </div>
   </div>
   <div id="crosshair"></div>
   <div id="ui">Munitions: <span id="ammo">30/30</span></div>
 
+  <!-- THREE.JS + CONTROLS SANS MODULE -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
 
   <script>
+    // VÉRIFICATION
+    if (!window.THREE) {
+      alert("ERREUR: Three.js non chargé");
+      throw new Error("Three.js failed");
+    }
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 10, 100);
@@ -56,24 +63,22 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
+    // CONTROLS
     const controls = new THREE.PointerLockControls(camera, renderer.domElement);
-    const blocker = document.getElementById('blocker');  // CORRIGÉ
-    const instructions = document.getElementById('instructions');
+    const blocker = document.getElementById('blocker');
     const crosshair = document.getElementById('crosshair');
 
-    instructions.addEventListener('click', () => controls.lock());
-
+    document.getElementById('instructions').addEventListener('click', () => controls.lock());
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
     });
-
     controls.addEventListener('unlock', () => {
       blocker.style.display = 'block';
       crosshair.style.opacity = '0';
     });
 
-    // DÉMARRAGE AUTO
+    // DÉMARRAGE AUTO (pour éviter le clic)
     setTimeout(() => {
       if (!controls.isLocked) controls.lock();
     }, 500);
@@ -84,7 +89,6 @@
       new THREE.MeshStandardMaterial({ color: 0x228B22 })
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = 0;
     floor.receiveShadow = true;
     scene.add(floor);
 
@@ -116,7 +120,7 @@
     function shoot() {
       if (ammo <= 0) return;
       ammo--;
-      document.getElementById('ammo').textContent = `${ammo}/30`;
+      document.getElementById('ammo').textContent = ammo + '/30';
       const bullet = new THREE.Mesh(
         new THREE.SphereGeometry(0.05),
         new THREE.MeshBasicMaterial({ color: 0xffff00 })
@@ -175,13 +179,15 @@
         if (checkCollision()) camera.position.copy(old);
       }
 
-      bullets.forEach((b, i) => {
+      // Balles
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
         b.position.add(b.velocity.clone().multiplyScalar(delta));
         if (b.position.length() > 200) {
           scene.remove(b);
           bullets.splice(i, 1);
         }
-      });
+      }
 
       renderer.render(scene, camera);
     }
