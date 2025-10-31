@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - NO CORS, NO MODULE</title>
+  <title>FPS Three.js V3 - Ennemis + Textures + Sons</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     #blocker {
@@ -34,23 +34,22 @@
   <div id="blocker">
     <div id="instructions">
       <h2>CLIQUE POUR JOUER</h2>
-      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer</p>
+      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer | <strong>R</strong> = recharger</p>
     </div>
   </div>
   <div id="crosshair"></div>
-  <div id="ui">Munitions: <span id="ammo">30/30</span></div>
+  <div id="ui">Munitions: <span id="ammo">30/30</span> | Ennemis: <span id="enemies">3</span></div>
 
-  <!-- THREE.JS + CONTROLS SANS MODULE -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
 
   <script>
-    // VÉRIFICATION
     if (!window.THREE) {
       alert("ERREUR: Three.js non chargé");
       throw new Error("Three.js failed");
     }
 
+    // SCÈNE
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 10, 100);
@@ -63,12 +62,21 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
+    // AUDIO
+    const listener = new THREE.AudioListener();
+    camera.add(listener);
+    const shootSound = new THREE.Audio(listener);
+    shootSound.setBuffer(new THREE.AudioLoader().load('https://freesound.org/data/previews/387/387182_4187614-lq.mp3')); // Tir gratuit Freesound
+    const reloadSound = new THREE.Audio(listener);
+    reloadSound.setBuffer(new THREE.AudioLoader().load('https://freesound.org/data/previews/155/15545_15545-lq.mp3')); // Reload gratuit Freesound
+
     // CONTROLS
     const controls = new THREE.PointerLockControls(camera, renderer.domElement);
     const blocker = document.getElementById('blocker');
+    const instructions = document.getElementById('instructions');
     const crosshair = document.getElementById('crosshair');
 
-    document.getElementById('instructions').addEventListener('click', () => controls.lock());
+    instructions.addEventListener('click', () => controls.lock());
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
@@ -78,15 +86,24 @@
       crosshair.style.opacity = '0';
     });
 
-    // DÉMARRAGE AUTO (pour éviter le clic)
+    // DÉMARRAGE AUTO
     setTimeout(() => {
       if (!controls.isLocked) controls.lock();
     }, 500);
 
+    // TEXTURES RÉELLES
+    const loader = new THREE.TextureLoader();
+    const floorTexture = loader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg'); // Parquet gratuit Three.js
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(10, 10);
+    const wallTexture = loader.load('https://threejs.org/examples/textures/brick_diffuse.jpg'); // Briques gratuites Three.js
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(4, 1);
+
     // SOL
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(100, 100),
-      new THREE.MeshStandardMaterial({ color: 0x228B22 })
+      new THREE.MeshStandardMaterial({ map: floorTexture })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -100,7 +117,7 @@
     scene.add(light);
 
     // MURS
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture });
     const walls = [];
     function addWall(x, z, w, d) {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
@@ -114,13 +131,36 @@
     addWall(-10, 10, 1, 20);
     addWall(0, 20, 20, 1);
 
-    // TIRS
+    // ENNEMIS (cubes rouges IA)
+    const enemies = [];
+    for (let i = 0; i < 3; i++) {
+      const enemy = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 2, 1),
+        new THREE.MeshStandardMaterial({ color: 0xff0000 })
+      );
+      enemy.position.set((Math.random() - 0.5) * 40, 1, (Math.random() - 0.5) * 40);
+      enemy.castShadow = true;
+      scene.add(enemy);
+      enemies.push(enemy);
+    }
+
+    // ARME (sprite)
+    const gunTexture = loader.load('https://opengameart.org/sites/default/files/gun_sprite_preview.png'); // Gun gratuit OpenGameArt
+    const gun = new THREE.Sprite(new THREE.SpriteMaterial({ map: gunTexture }));
+    gun.position.set(0.3, -0.3, -0.5);
+    gun.scale.set(0.4, 0.4, 1);
+    camera.add(gun);
+
+    // TIRS + ENNEMIS
     const bullets = [];
     let ammo = 30;
+    let isReloading = false;
     function shoot() {
-      if (ammo <= 0) return;
+      if (ammo <= 0 || isReloading) return;
       ammo--;
-      document.getElementById('ammo').textContent = ammo + '/30';
+      document.getElementById('ammo').textContent = `${ammo}/30`;
+      shootSound.play();
+
       const bullet = new THREE.Mesh(
         new THREE.SphereGeometry(0.05),
         new THREE.MeshBasicMaterial({ color: 0xffff00 })
@@ -133,6 +173,19 @@
       bullets.push(bullet);
     }
     document.addEventListener('click', shoot);
+
+    // RECHARGEMENT
+    document.addEventListener('keydown', e => {
+      if (e.code === 'KeyR' && ammo < 30 && !isReloading) {
+        isReloading = true;
+        reloadSound.play();
+        setTimeout(() => {
+          ammo = 30;
+          document.getElementById('ammo').textContent = `${ammo}/30`;
+          isReloading = false;
+        }, 2000);
+      }
+    });
 
     // MOUVEMENT
     const move = { forward: false, backward: false, left: false, right: false };
@@ -149,13 +202,36 @@
       if (e.code === 'KeyD') move.right = false;
     });
 
-    // COLLISION
-    function checkCollision() {
+    // COLLISION JOUEUR
+    function checkPlayerCollision() {
       const box = new THREE.Box3().setFromObject(camera);
       for (const w of walls) {
         if (box.intersectsBox(new THREE.Box3().setFromObject(w))) return true;
       }
       return false;
+    }
+
+    // COLLISION BALLES ENNEMIS
+    function checkBulletEnemies() {
+      bullets.forEach((bullet, bi) => {
+        enemies.forEach((enemy, ei) => {
+          if (bullet.position.distanceTo(enemy.position) < 0.6) {
+            scene.remove(enemy);
+            enemies.splice(ei, 1);
+            scene.remove(bullet);
+            bullets.splice(bi, 1);
+            document.getElementById('enemies').textContent = enemies.length;
+          }
+        });
+      });
+    }
+
+    // IA ENNEMIS (se déplacent vers joueur)
+    function updateEnemies() {
+      enemies.forEach(enemy => {
+        const dir = new THREE.Vector3().subVectors(camera.position, enemy.position).normalize();
+        enemy.position.add(dir.multiplyScalar(0.5));
+      });
     }
 
     // BOUCLE
@@ -176,18 +252,20 @@
         const old = camera.position.clone();
         controls.moveRight(vel.x);
         controls.moveForward(vel.z);
-        if (checkCollision()) camera.position.copy(old);
+        if (checkPlayerCollision()) camera.position.copy(old);
       }
 
       // Balles
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        const b = bullets[i];
+      bullets.forEach((b, i) => {
         b.position.add(b.velocity.clone().multiplyScalar(delta));
         if (b.position.length() > 200) {
           scene.remove(b);
           bullets.splice(i, 1);
         }
-      }
+      });
+
+      updateEnemies();
+      checkBulletEnemies();
 
       renderer.render(scene, camera);
     }
