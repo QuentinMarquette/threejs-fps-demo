@@ -3,174 +3,175 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - Veille Techno</title>
+  <title>FPS Three.js - ULTIMATE</title>
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-    #instructions {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px;
-      font-family: Arial; text-align: center; cursor: pointer;
+    body { margin: 0; overflow: hidden; background: #000; font-family: Arial; }
+    #blocker {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.9);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      color: white; text-align: center; z-index: 1000;
     }
-    #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px; pointer-events: none; }
+    #instructions { cursor: pointer; padding: 30px; background: #222; border-radius: 15px; max-width: 500px; }
+    #crosshair {
+      position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    }
     #crosshair::before, #crosshair::after {
-      content: ''; position: absolute; background: lime;
-      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      content: ''; position: absolute; background: lime; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
     }
     #crosshair::before { width: 2px; height: 20px; }
     #crosshair::after { width: 20px; height: 2px; }
+    #error { color: #ff6b6b; margin-top: 15px; font-size: 0.9em; }
   </style>
 </head>
 <body>
-  <div id="instructions">Clique pour jouer<br/>ZQSD = déplacer | Souris = regarder</div>
+
+  <div id="blocker">
+    <div id="instructions">
+      <h2>Clique pour jouer</h2>
+      <p><strong>ZQSD</strong> = déplacer | <strong>Souris</strong> = regarder</p>
+      <p id="error"></p>
+    </div>
+  </div>
   <div id="crosshair"></div>
 
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js';
-    import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js';
+  <!-- Three.js + PointerLock via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <script>
+    // === DÉTECTION file:// + MESSAGE D'ERREUR ===
+    const errorDiv = document.getElementById('error');
+    if (window.location.protocol === 'file:') {
+      errorDiv.innerHTML = 'Pointer Lock bloqué en file:// → <br><strong>Utilise un serveur local</strong> (Live Server, Python, etc.)<br>OU continue : le jeu marchera sans verrouillage souris.';
+    }
 
     // === SCÈNE ===
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.Fog(0x87ceeb, 0, 50);
+    scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
 
-    // === CAMÉRA ===
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 1.6, 5);
 
-    // === RENDERER ===
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // === CONTRÔLES FPS ===
-    const controls = new PointerLockControls(camera, document.body);
+    // === CONTRÔLES (Pointer Lock) ===
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
-    instructions.addEventListener('click', () => controls.lock());
-    controls.addEventListener('lock', () => instructions.style.display = 'none');
-    controls.addEventListener('unlock', () => instructions.style.display = 'block');
+    const crosshair = document.getElementById('crosshair');
+
+    instructions.addEventListener('click', () => {
+      controls.lock();
+    });
+
+    controls.addEventListener('lock', () => {
+      blocker.style.display = 'none';
+      crosshair.style.opacity = '1';
+    });
+
+    controls.addEventListener('unlock', () => {
+      blocker.style.display = 'block';
+      crosshair.style.opacity = '0';
+    });
 
     // === SOL ===
-    const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(50, 50),
+      new THREE.MeshStandardMaterial({ color: 0x228B22 })
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
 
     // === LUMIÈRE ===
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    scene.add(dirLight);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(10, 20, 10);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
+    scene.add(light);
 
-    // === TEXTURES SIMPLE (procédurales) ===
-    function createWallMaterial(color) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 128; canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = color;
-      ctx.fillRect(0, 0, 128, 128);
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 8;
-      for (let i = 0; i < 128; i += 32) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0); ctx.lineTo(i, 128);
-        ctx.moveTo(0, i); ctx.lineTo(128, i);
-        ctx.stroke();
-      }
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
-    }
+    // === MURS (labyrinthe simple) ===
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const walls = [];
 
-    // === LABYRINTHE (murs) ===
-    const wallMaterial1 = createWallMaterial('#8B4513'); // marron
-    const wallMaterial2 = createWallMaterial('#696969'); // gris
-
-    function addWall(x, z, width, depth, material) {
-      const geometry = new THREE.BoxGeometry(width, 3, depth);
-      const wall = new THREE.Mesh(geometry, material);
+    function addWall(x, z, w, d) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
       wall.position.set(x, 1.5, z);
-      wall.castShadow = true;
-      wall.receiveShadow = true;
+      wall.castShadow = wall.receiveShadow = true;
       scene.add(wall);
-      return wall;
+      walls.push(wall);
     }
 
-    // Exemple de labyrinthe simple
-    const walls = [
-      addWall(0, 0, 10, 1, wallMaterial1),
-      addWall(5, 5, 1, 10, wallMaterial2),
-      addWall(-5, 5, 1, 10, wallMaterial2),
-      addWall(0, 10, 10, 1, wallMaterial1),
-      addWall(3, 7, 4, 1, wallMaterial1),
-      addWall(-3, 3, 1, 6, wallMaterial2),
-    ];
+    addWall(0, 0, 12, 1);
+    addWall(6, 6, 1, 12);
+    addWall(-6, 6, 1, 12);
+    addWall(0, 12, 12, 1);
+    addWall(3, 8, 6, 1);
 
     // === MOUVEMENT ===
     const move = { forward: false, backward: false, left: false, right: false };
+    const speed = 10;
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
-    let moveSpeed = 10;
 
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
       switch (e.code) {
-        case 'KeyW': case 'ArrowUp': move.forward = true; break;
-        case 'KeyS': case 'ArrowDown': move.backward = true; break;
-        case 'KeyA': case 'ArrowLeft': move.left = true; break;
-        case 'KeyD': case 'ArrowRight': move.right = true; break;
+        case 'KeyW': move.forward = true; break;
+        case 'KeyS': move.backward = true; break;
+        case 'KeyA': move.left = true; break;
+        case 'KeyD': move.right = true; break;
       }
     });
-    document.addEventListener('keyup', (e) => {
+    document.addEventListener('keyup', e => {
       switch (e.code) {
-        case 'KeyW': case 'ArrowUp': move.forward = false; break;
-        case 'KeyS': case 'ArrowDown': move.backward = false; break;
-        case 'KeyA': case 'ArrowLeft': move.left = false; break;
-        case 'KeyD': case 'ArrowRight': move.right = false; break;
+        case 'KeyW': move.forward = false; break;
+        case 'KeyS': move.backward = false; break;
+        case 'KeyA': move.left = false; break;
+        case 'KeyD': move.right = false; break;
       }
     });
 
-    // === COLLISIONS SIMPLES (boîtes) ===
+    // === COLLISION BASIQUE ===
     function checkCollision() {
       const playerBox = new THREE.Box3().setFromObject(camera);
       for (const wall of walls) {
-        const wallBox = new THREE.Box3().setFromObject(wall);
-        if (playerBox.intersectsBox(wallBox)) {
+        if (playerBox.intersectsBox(new THREE.Box3().setFromObject(wall))) {
           return true;
         }
       }
       return false;
     }
 
-    // === BOUCLE D'ANIMATION (60 FPS) ===
+    // === BOUCLE ===
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
       if (controls.isLocked) {
-        velocity.x = 0; velocity.z = 0;
-
+        velocity.x = velocity.z = 0;
         direction.z = Number(move.forward) - Number(move.backward);
         direction.x = Number(move.right) - Number(move.left);
         direction.normalize();
 
-        if (move.forward || move.backward) velocity.z -= direction.z * moveSpeed * delta;
-        if (move.left || move.right) velocity.x -= direction.x * moveSpeed * delta;
+        if (move.forward || move.backward) velocity.z = -direction.z * speed * delta;
+        if (move.left || move.right) velocity.x = -direction.x * speed * delta;
 
-        // Test de collision avant déplacement
-        const testPos = camera.position.clone();
-        controls.moveRight(-velocity.x);
-        controls.moveForward(-velocity.z);
+        const oldPos = camera.position.clone();
+        controls.moveRight(velocity.x);
+        controls.moveForward(velocity.z);
+
         if (checkCollision()) {
-          controls.moveRight(velocity.x);
-          controls.moveForward(velocity.z);
+          camera.position.copy(oldPos);
         }
       }
 
@@ -178,7 +179,7 @@
     }
     animate();
 
-    // === REDIMENSIONNEMENT ===
+    // === RESIZE ===
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
