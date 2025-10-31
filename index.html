@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js V3 - DÉMARRE IMMÉDIATEMENT</title>
+  <title>FPS Three.js V3.1 - GARANTI</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     #blocker {
@@ -28,6 +28,9 @@
     #ui {
       position: absolute; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; z-index: 100;
     }
+    #debug {
+      position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 12px; background: rgba(0,0,0,0.7); padding: 5px; border-radius: 5px; z-index: 100;
+    }
   </style>
 </head>
 <body>
@@ -35,21 +38,28 @@
   <div id="blocker">
     <div id="instructions">
       <h2>CLIQUE N'IMPORTE OÙ POUR DÉMARRER</h2>
-      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic gauche</strong> = tirer | <strong>R</strong> = recharger</p>
-      <p style="font-size:0.9em; color:#ff6b6b;">CLIC OBLIGATOIRE (sécurité navigateur)</p>
+      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer</p>
     </div>
   </div>
   <div id="crosshair"></div>
   <div id="ui">Munitions: <span id="ammo">30/30</span> | Ennemis: <span id="enemies">3</span></div>
+  <div id="debug">Chargement Three.js...</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
+  <!-- THREE.JS + CONTROLS (UNPKG = PLUS STABLE) -->
+  <script src="https://unpkg.com/three@0.168.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
 
   <script>
+    // DEBUG + VÉRIFICATION
+    const debug = document.getElementById('debug');
     if (!window.THREE) {
-      alert("ERREUR: Three.js non chargé");
-      throw new Error("Three.js failed");
+      debug.textContent = "ERREUR: Three.js non chargé (CDN bloqué)";
+      setTimeout(() => {
+        alert("Three.js non chargé. Essaie avec un autre réseau ou un VPN.");
+      }, 1000);
+      throw new Error("Three.js failed to load");
     }
+    debug.textContent = "Three.js chargé !";
 
     // SCÈNE
     const scene = new THREE.Scene();
@@ -69,17 +79,14 @@
     const blocker = document.getElementById('blocker');
     const crosshair = document.getElementById('crosshair');
 
-    // CLIC OBLIGATOIRE → DÉMARRE LE JEU
     document.body.addEventListener('click', () => {
-      if (!controls.isLocked) {
-        controls.lock();
-      }
+      if (!controls.isLocked) controls.lock();
     });
 
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
-      console.log("JEU DÉMARRÉ !");
+      debug.textContent = "JEU ACTIF ! ZQSD + clic";
     });
 
     controls.addEventListener('unlock', () => {
@@ -87,7 +94,7 @@
       crosshair.style.opacity = '0';
     });
 
-    // TEXTURES
+    // TEXTURES (UNPKG aussi)
     const loader = new THREE.TextureLoader();
     const floorTexture = loader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
@@ -140,13 +147,13 @@
       enemies.push(enemy);
     }
 
-    // AUDIO
+    // SONS
     const listener = new THREE.AudioListener();
     camera.add(listener);
     const shootSound = new THREE.Audio(listener);
+    const reloadSound = new THREE.Audio(listener);
     const audioLoader = new THREE.AudioLoader();
     audioLoader.load('https://freesound.org/data/previews/387/387182_4187614-lq.mp3', buffer => shootSound.setBuffer(buffer));
-    const reloadSound = new THREE.Audio(listener);
     audioLoader.load('https://freesound.org/data/previews/155/15545_15545-lq.mp3', buffer => reloadSound.setBuffer(buffer));
 
     // TIRS
