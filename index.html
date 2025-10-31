@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FPS Three.js - Veille Techno</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #instructions {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px;
+      font-family: Arial; text-align: center; cursor: pointer;
+    }
+    #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px; pointer-events: none; }
+    #crosshair::before, #crosshair::after {
+      content: ''; position: absolute; background: lime;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+    }
+    #crosshair::before { width: 2px; height: 20px; }
+    #crosshair::after { width: 20px; height: 2px; }
+  </style>
+</head>
+<body>
+  <div id="instructions">Clique pour jouer<br/>ZQSD = déplacer | Souris = regarder</div>
+  <div id="crosshair"></div>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js';
+    import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js';
+
+    // === SCÈNE ===
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0x87ceeb, 0, 50);
+
+    // === CAMÉRA ===
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 5);
+
+    // === RENDERER ===
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // === CONTRÔLES FPS ===
+    const controls = new PointerLockControls(camera, document.body);
+    const instructions = document.getElementById('instructions');
+    instructions.addEventListener('click', () => controls.lock());
+    controls.addEventListener('lock', () => instructions.style.display = 'none');
+    controls.addEventListener('unlock', () => instructions.style.display = 'block');
+
+    // === SOL ===
+    const floorGeometry = new THREE.PlaneGeometry(50, 50);
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // === LUMIÈRE ===
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    // === TEXTURES SIMPLE (procédurales) ===
+    function createWallMaterial(color) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 8;
+      for (let i = 0; i < 128; i += 32) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0); ctx.lineTo(i, 128);
+        ctx.moveTo(0, i); ctx.lineTo(128, i);
+        ctx.stroke();
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
+    }
+
+    // === LABYRINTHE (murs) ===
+    const wallMaterial1 = createWallMaterial('#8B4513'); // marron
+    const wallMaterial2 = createWallMaterial('#696969'); // gris
+
+    function addWall(x, z, width, depth, material) {
+      const geometry = new THREE.BoxGeometry(width, 3, depth);
+      const wall = new THREE.Mesh(geometry, material);
+      wall.position.set(x, 1.5, z);
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      scene.add(wall);
+      return wall;
+    }
+
+    // Exemple de labyrinthe simple
+    const walls = [
+      addWall(0, 0, 10, 1, wallMaterial1),
+      addWall(5, 5, 1, 10, wallMaterial2),
+      addWall(-5, 5, 1, 10, wallMaterial2),
+      addWall(0, 10, 10, 1, wallMaterial1),
+      addWall(3, 7, 4, 1, wallMaterial1),
+      addWall(-3, 3, 1, 6, wallMaterial2),
+    ];
+
+    // === MOUVEMENT ===
+    const move = { forward: false, backward: false, left: false, right: false };
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    let moveSpeed = 10;
+
+    document.addEventListener('keydown', (e) => {
+      switch (e.code) {
+        case 'KeyW': case 'ArrowUp': move.forward = true; break;
+        case 'KeyS': case 'ArrowDown': move.backward = true; break;
+        case 'KeyA': case 'ArrowLeft': move.left = true; break;
+        case 'KeyD': case 'ArrowRight': move.right = true; break;
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      switch (e.code) {
+        case 'KeyW': case 'ArrowUp': move.forward = false; break;
+        case 'KeyS': case 'ArrowDown': move.backward = false; break;
+        case 'KeyA': case 'ArrowLeft': move.left = false; break;
+        case 'KeyD': case 'ArrowRight': move.right = false; break;
+      }
+    });
+
+    // === COLLISIONS SIMPLES (boîtes) ===
+    function checkCollision() {
+      const playerBox = new THREE.Box3().setFromObject(camera);
+      for (const wall of walls) {
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        if (playerBox.intersectsBox(wallBox)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // === BOUCLE D'ANIMATION (60 FPS) ===
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      if (controls.isLocked) {
+        velocity.x = 0; velocity.z = 0;
+
+        direction.z = Number(move.forward) - Number(move.backward);
+        direction.x = Number(move.right) - Number(move.left);
+        direction.normalize();
+
+        if (move.forward || move.backward) velocity.z -= direction.z * moveSpeed * delta;
+        if (move.left || move.right) velocity.x -= direction.x * moveSpeed * delta;
+
+        // Test de collision avant déplacement
+        const testPos = camera.position.clone();
+        controls.moveRight(-velocity.x);
+        controls.moveForward(-velocity.z);
+        if (checkCollision()) {
+          controls.moveRight(velocity.x);
+          controls.moveForward(velocity.z);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // === REDIMENSIONNEMENT ===
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
