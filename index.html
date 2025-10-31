@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - FONCTIONNEL</title>
+  <title>FPS Three.js - 100% FONCTIONNEL</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #000; }
+    body { margin: 0; overflow: hidden; background: #111; font-family: Arial; }
     #blocker {
       position: absolute; inset: 0; background: rgba(0,0,0,0.9);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
-      color: white; font-family: Arial; text-align: center; z-index: 1000;
+      color: white; text-align: center; z-index: 1000;
     }
     #instructions {
       cursor: pointer; padding: 30px; background: #222; border-radius: 15px; max-width: 500px;
     }
     #crosshair {
       position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
-      pointer-events: none; opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; opacity: 0;
     }
     #crosshair::before, #crosshair::after {
       content: ''; position: absolute; background: lime; left: 50%; top: 50%;
@@ -24,28 +24,30 @@
     }
     #crosshair::before { width: 2px; height: 20px; }
     #crosshair::after { width: 20px; height: 2px; }
+    #debug {
+      position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 12px; background: rgba(0,0,0,0.7); padding: 5px; border-radius: 5px; z-index: 100;
+    }
   </style>
 </head>
 <body>
 
   <div id="blocker">
     <div id="instructions">
-      <h2>Clique pour jouer</h2>
-      <p><strong>ZQSD</strong> = déplacer | <strong>Souris</strong> = regarder</p>
-      <p id="status" style="color:#ff6b6b; margin-top:15px;"></p>
+      <h2>CLIQUE POUR JOUER</h2>
+      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = regarder</p>
+      <p style="color:#ff6b6b; font-size:0.9em;">Si rien ne se passe → F12 → Console</p>
     </div>
   </div>
   <div id="crosshair"></div>
+  <div id="debug">Chargement...</div>
 
-  <!-- Three.js + PointerLockControls (CHEMIN CORRIGÉ) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js"></script>
-
+  <!-- Three.js + PointerLockControls (CHEMIN CORRECT) -->
   <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js';
     import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js';
 
-    const status = document.getElementById('status');
-    status.textContent = 'Chargement...';
+    const debug = document.getElementById('debug');
+    debug.textContent = 'Three.js chargé';
 
     // === SCÈNE ===
     const scene = new THREE.Scene();
@@ -61,7 +63,7 @@
     document.body.appendChild(renderer.domElement);
 
     // === CONTRÔLES ===
-    const controls = new PointerLockControls(camera, document.body);
+    const controls = new PointerLockControls(camera, renderer.domElement);
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
     const crosshair = document.getElementById('crosshair');
@@ -73,15 +75,16 @@
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
-      status.textContent = '';
+      debug.textContent = 'JEU DÉMARRÉ !';
     });
 
     controls.addEventListener('unlock', () => {
       blocker.style.display = 'block';
       crosshair.style.opacity = '0';
+      debug.textContent = 'Appuie sur ESC pour revenir';
     });
 
-    // === SOL ===
+    // === SOL + MURS ===
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(50, 50),
       new THREE.MeshStandardMaterial({ color: 0x228B22 })
@@ -90,16 +93,12 @@
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // === LUMIÈRE ===
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const light = new THREE.DirectionalLight(0xffffff, 0.8);
     light.position.set(10, 20, 10);
     light.castShadow = true;
-    light.shadow.mapSize.width = 2048;
-    light.shadow.mapSize.height = 2048;
     scene.add(light);
 
-    // === MURS ===
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
     const walls = [];
     function addWall(x, z, w, d) {
@@ -113,36 +112,29 @@
     addWall(6, 6, 1, 12);
     addWall(-6, 6, 1, 12);
     addWall(0, 12, 12, 1);
-    addWall(3, 8, 6, 1);
 
     // === MOUVEMENT ===
     const move = { forward: false, backward: false, left: false, right: false };
     const speed = 10;
 
     document.addEventListener('keydown', e => {
-      switch (e.code) {
-        case 'KeyW': move.forward = true; break;
-        case 'KeyS': move.backward = true; break;
-        case 'KeyA': move.left = true; break;
-        case 'KeyD': move.right = true; break;
-      }
+      if (e.code === 'KeyW') move.forward = true;
+      if (e.code === 'KeyS') move.backward = true;
+      if (e.code === 'KeyA') move.left = true;
+      if (e.code === 'KeyD') move.right = true;
     });
     document.addEventListener('keyup', e => {
-      switch (e.code) {
-        case 'KeyW': move.forward = false; break;
-        case 'KeyS': move.backward = false; break;
-        case 'KeyA': move.left = false; break;
-        case 'KeyD': move.right = false; break;
-      }
+      if (e.code === 'KeyW') move.forward = false;
+      if (e.code === 'KeyS') move.backward = false;
+      if (e.code === 'KeyA') move.left = false;
+      if (e.code === 'KeyD') move.right = false;
     });
 
     // === COLLISION ===
     function checkCollision() {
       const playerBox = new THREE.Box3().setFromObject(camera);
       for (const wall of walls) {
-        if (playerBox.intersectsBox(new THREE.Box3().setFromObject(wall))) {
-          return true;
-        }
+        if (playerBox.intersectsBox(new THREE.Box3().setFromObject(wall))) return true;
       }
       return false;
     }
@@ -167,19 +159,16 @@
         controls.moveRight(velocity.x);
         controls.moveForward(velocity.z);
 
-        if (checkCollision()) {
-          camera.position.copy(oldPos);
-        }
+        if (checkCollision()) camera.position.copy(oldPos);
       }
 
       renderer.render(scene, camera);
     }
 
     // Démarrage
-    status.textContent = 'Prêt ! Clique pour jouer.';
+    debug.textContent = 'Prêt ! Clique pour jouer.';
     animate();
 
-    // Resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
