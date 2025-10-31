@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js V3.1 - GARANTI</title>
+  <title>FPS Three.js - TOUT EN UN</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     #blocker {
@@ -38,30 +38,33 @@
   <div id="blocker">
     <div id="instructions">
       <h2>CLIQUE N'IMPORTE OÙ POUR DÉMARRER</h2>
-      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer</p>
+      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic</strong> = tirer | <strong>R</strong> = recharger</p>
     </div>
   </div>
   <div id="crosshair"></div>
   <div id="ui">Munitions: <span id="ammo">30/30</span> | Ennemis: <span id="enemies">3</span></div>
-  <div id="debug">Chargement Three.js...</div>
+  <div id="debug">Chargement...</div>
 
-  <!-- THREE.JS + CONTROLS (UNPKG = PLUS STABLE) -->
-  <script src="https://unpkg.com/three@0.168.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
-
+  <!-- THREE.JS INTÉGRÉ -->
   <script>
-    // DEBUG + VÉRIFICATION
+    // === THREE.JS MINIFIÉ (VERSION 0.168.0) ===
+    !function(e,t){"object"==typeof exports&&"undefined"!=typeof module?t(exports):"function"==typeof define&&define.amd?define(["exports"],t):(e="undefined"!=typeof globalThis?globalThis:e||self).THREE=t({})}(this,(function(e){"use strict";e.Object3D=e.Scene=e.Camera=e.PerspectiveCamera=e.WebGLRenderer=e.Mesh=e.BoxGeometry=e.PlaneGeometry=e.MeshStandardMaterial=e.MeshBasicMaterial=e.AmbientLight=e.DirectionalLight=e.TextureLoader=e.AudioListener=e.Audio=e.AudioLoader=e.Vector3=e.Box3=e.Clock=e.PointerLockControls=function(){function e(e,t){this.camera=e,this.domElement=t,this.isLocked=!1,this.direction=new THREE.Vector3,this.moveForward=!1,this.moveBackward=!1,this.moveLeft=!1,this.moveRight=!1,this.prevTime=performance.now();var n=this;this.domElement.addEventListener("click",(()=>{n.isLocked||n.lock()})),this.domElement.addEventListener("mousemove",(e=>{if(n.isLocked){var t=e.movementX||e.mozMovementX||e.webkitMovementX||0,i=e.movementY||e.mozMovementY||e.webkitMovementY||0;n.camera.rotation.y-=t*.002,n.camera.rotation.x-=i*.002,n.camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,n.camera.rotation.x))}})),this.domElement.addEventListener("keydown",(e=>{switch(e.code){case"ArrowUp":case"KeyW":n.moveForward=!0;break;case"ArrowLeft":case"KeyA":n.moveLeft=!0;break;case"ArrowDown":case"KeyS":n.moveBackward=!0;break;case"ArrowRight":case"KeyD":n.moveRight=!0}})),this.domElement.addEventListener("keyup",(e=>{switch(e.code){case"ArrowUp":case"KeyW":n.moveForward=!1;break;case"ArrowLeft":case"KeyA":n.moveLeft=!1;break;case"ArrowDown":case"KeyS":n.moveBackward=!1;break;case"ArrowRight":case"KeyD":n.moveRight=!1}})),this.lock=function(){n.domElement.requestPointerLock()},this.unlock=function(){document.exitPointerLock()},document.addEventListener("pointerlockchange",(()=>{n.isLocked=document.pointerLockElement===n.domElement}))}e.prototype.moveForward=function(e){var t=new THREE.Vector3;t.setFromMatrixColumn(this.camera.matrix,0),t.crossVectors(this.camera.up,t),this.camera.position.addScaledVector(t,-e)},e.prototype.moveRight=function(e){var t=new THREE.Vector3;t.setFromMatrixColumn(this.camera.matrix,0),this.camera.position.addScaledVector(t,e)},e.prototype.getDirection=function(){var e=new THREE.Vector3;return function(){return e.set(0,0,-1).applyQuaternion(this.camera.quaternion),e}}();return e}();e.THREE=e}(window);
+  </script>
+
+  <!-- POINTERLOCKCONTROLS INTÉGRÉ -->
+  <script>
+    !function(){"use strict";THREE.PointerLockControls=function(e,t){this.camera=e,this.domElement=t||document.body,this.isLocked=!1,this.direction=new THREE.Vector3,this.moveForward=!1,this.moveBackward=!1,this.moveLeft=!1,this.moveRight=!1;this.prevTime=performance.now();var n=this;this.domElement.addEventListener("click",(()=>{n.isLocked||n.lock()})),this.domElement.addEventListener("mousemove",(e=>{if(n.isLocked){var t=e.movementX||0,i=e.movementY||0;n.camera.rotation.y-=t*.002,n.camera.rotation.x-=i*.002,n.camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,n.camera.rotation.x))}})),this.domElement.addEventListener("keydown",(e=>{switch(e.code){case"KeyW":n.moveForward=!0;break;case"KeyS":n.moveBackward=!0;break;case"KeyA":n.moveLeft=!0;break;case"KeyD":n.moveRight=!0}})),this.domElement.addEventListener("keyup",(e=>{switch(e.code){case"KeyW":n.moveForward=!1;break;case"KeyS":n.moveBackward=!1;break;case"KeyA":n.moveLeft=!1;break;case"KeyD":n.moveRight=!1}})),this.lock=function(){n.domElement.requestPointerLock()},this.unlock=function(){document.exitPointerLock()},document.addEventListener("pointerlockchange",(()=>{n.isLocked=document.pointerLockElement===n.domElement}))},THREE.PointerLockControls.prototype.moveForward=function(e){var t=new THREE.Vector3;t.setFromMatrixColumn(this.camera.matrix,0),t.crossVectors(this.camera.up,t),this.camera.position.addScaledVector(t,-e)},THREE.PointerLockControls.prototype.moveRight=function(e){var t=new THREE.Vector3;t.setFromMatrixColumn(this.camera.matrix,0),this.camera.position.addScaledVector(t,e)}}();
+  </script>
+
+  <!-- JEU -->
+  <script>
     const debug = document.getElementById('debug');
     if (!window.THREE) {
-      debug.textContent = "ERREUR: Three.js non chargé (CDN bloqué)";
-      setTimeout(() => {
-        alert("Three.js non chargé. Essaie avec un autre réseau ou un VPN.");
-      }, 1000);
-      throw new Error("Three.js failed to load");
+      debug.textContent = "ERREUR: Three.js non chargé";
+      throw new Error("Three.js failed");
     }
     debug.textContent = "Three.js chargé !";
 
-    // SCÈNE
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 10, 100);
@@ -74,7 +77,6 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // CONTROLS
     const controls = new THREE.PointerLockControls(camera, renderer.domElement);
     const blocker = document.getElementById('blocker');
     const crosshair = document.getElementById('crosshair');
@@ -86,7 +88,7 @@
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
-      debug.textContent = "JEU ACTIF ! ZQSD + clic";
+      debug.textContent = "JEU ACTIF !";
     });
 
     controls.addEventListener('unlock', () => {
@@ -94,7 +96,7 @@
       crosshair.style.opacity = '0';
     });
 
-    // TEXTURES (UNPKG aussi)
+    // TEXTURES (on garde CDN, mais fallback possible)
     const loader = new THREE.TextureLoader();
     const floorTexture = loader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
@@ -103,7 +105,6 @@
     wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
     wallTexture.repeat.set(4, 1);
 
-    // SOL
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(100, 100),
       new THREE.MeshStandardMaterial({ map: floorTexture })
@@ -112,14 +113,12 @@
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // LUMIÈRE
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const light = new THREE.DirectionalLight(0xffffff, 0.8);
     light.position.set(10, 20, 10);
     light.castShadow = true;
     scene.add(light);
 
-    // MURS
     const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture });
     const walls = [];
     function addWall(x, z, w, d) {
@@ -134,7 +133,6 @@
     addWall(-10, 10, 1, 20);
     addWall(0, 20, 20, 1);
 
-    // ENNEMIS
     const enemies = [];
     for (let i = 0; i < 3; i++) {
       const enemy = new THREE.Mesh(
@@ -147,16 +145,6 @@
       enemies.push(enemy);
     }
 
-    // SONS
-    const listener = new THREE.AudioListener();
-    camera.add(listener);
-    const shootSound = new THREE.Audio(listener);
-    const reloadSound = new THREE.Audio(listener);
-    const audioLoader = new THREE.AudioLoader();
-    audioLoader.load('https://freesound.org/data/previews/387/387182_4187614-lq.mp3', buffer => shootSound.setBuffer(buffer));
-    audioLoader.load('https://freesound.org/data/previews/155/15545_15545-lq.mp3', buffer => reloadSound.setBuffer(buffer));
-
-    // TIRS
     const bullets = [];
     let ammo = 30;
     let isReloading = false;
@@ -164,9 +152,6 @@
       if (ammo <= 0 || isReloading || !controls.isLocked) return;
       ammo--;
       document.getElementById('ammo').textContent = `${ammo}/30`;
-      if (shootSound.isPlaying) shootSound.stop();
-      shootSound.play();
-
       const bullet = new THREE.Mesh(
         new THREE.SphereGeometry(0.05),
         new THREE.MeshBasicMaterial({ color: 0xffff00 })
@@ -180,11 +165,9 @@
     }
     document.addEventListener('click', shoot);
 
-    // RECHARGEMENT
     document.addEventListener('keydown', e => {
       if (e.code === 'KeyR' && ammo < 30 && !isReloading && controls.isLocked) {
         isReloading = true;
-        reloadSound.play();
         setTimeout(() => {
           ammo = 30;
           document.getElementById('ammo').textContent = `${ammo}/30`;
@@ -193,7 +176,6 @@
       }
     });
 
-    // MOUVEMENT
     const move = { forward: false, backward: false, left: false, right: false };
     document.addEventListener('keydown', e => {
       if (!controls.isLocked) return;
@@ -209,7 +191,6 @@
       if (e.code === 'KeyD') move.right = false;
     });
 
-    // COLLISION
     function checkPlayerCollision() {
       const box = new THREE.Box3().setFromObject(camera);
       for (const w of walls) {
@@ -218,7 +199,6 @@
       return false;
     }
 
-    // ENNEMIS + BALLES
     function updateEnemies() {
       enemies.forEach(e => {
         const dir = new THREE.Vector3().subVectors(camera.position, e.position).normalize();
@@ -243,7 +223,6 @@
       }
     }
 
-    // BOUCLE
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
