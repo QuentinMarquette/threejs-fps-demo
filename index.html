@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FPS Three.js - 100% FONCTIONNEL</title>
+  <title>FPS Three.js V2 - Arme + Tirs + Textures</title>
   <style>
     body { margin: 0; overflow: hidden; background: #111; font-family: Arial; }
     #blocker {
@@ -24,6 +24,9 @@
     }
     #crosshair::before { width: 2px; height: 20px; }
     #crosshair::after { width: 20px; height: 2px; }
+    #ui {
+      position: absolute; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; z-index: 100;
+    }
     #debug {
       position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 12px; background: rgba(0,0,0,0.7); padding: 5px; border-radius: 5px; z-index: 100;
     }
@@ -34,20 +37,24 @@
   <div id="blocker">
     <div id="instructions">
       <h2>CLIQUE POUR JOUER</h2>
-      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = regarder</p>
-      <p style="color:#ff6b6b; font-size:0.9em;">Si rien ne se passe → F12 → Console</p>
+      <p><strong>ZQSD</strong> = bouger | <strong>Souris</strong> = viser | <strong>Clic gauche</strong> = tirer | <strong>R</strong> = recharger</p>
     </div>
   </div>
   <div id="crosshair"></div>
+  <div id="ui">Munitions: <span id="ammo">30/30</span></div>
   <div id="debug">Chargement...</div>
 
-  <!-- Three.js + PointerLockControls (CHEMIN CORRECT) -->
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js';
-    import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/PointerLockControls.js';
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/PointerLockControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/audio/AudioListener.js"></script>
 
-    const debug = document.getElementById('debug');
-    debug.textContent = 'Three.js chargé';
+  <script>
+    if (typeof THREE === 'undefined') {
+      document.getElementById('debug').textContent = 'ERREUR: Three.js non chargé';
+      throw new Error('Three.js failed to load');
+    }
+    document.getElementById('debug').textContent = 'Three.js OK';
 
     // === SCÈNE ===
     const scene = new THREE.Scene();
@@ -62,44 +69,54 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
+    // === AUDIO ===
+    const listener = new THREE.AudioListener();
+    camera.add(listener);
+
     // === CONTRÔLES ===
-    const controls = new PointerLockControls(camera, renderer.domElement);
+    const controls = new THREE.PointerLockControls(camera, renderer.domElement);
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
     const crosshair = document.getElementById('crosshair');
 
-    instructions.addEventListener('click', () => {
-      controls.lock();
-    });
-
+    instructions.addEventListener('click', () => controls.lock());
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
       crosshair.style.opacity = '1';
-      debug.textContent = 'JEU DÉMARRÉ !';
+      document.getElementById('debug').textContent = 'JEU ACTIF';
     });
-
     controls.addEventListener('unlock', () => {
       blocker.style.display = 'block';
       crosshair.style.opacity = '0';
-      debug.textContent = 'Appuie sur ESC pour revenir';
     });
 
-    // === SOL + MURS ===
+    // === TEXTURES RÉELLES ===
+    const loader = new THREE.TextureLoader();
+    const wallTexture = loader.load('https://threejs.org/examples/textures/brick_diffuse.jpg'); // Exemple gratuit Three.js [](grok_render_citation_card_json={"cardIds":["b2b1ae"]})
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(4, 1);
+    const floorTexture = loader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg'); // Exemple gratuit Three.js [](grok_render_citation_card_json={"cardIds":["1e216a"]})
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(10, 10);
+
+    // === SOL ===
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(50, 50),
-      new THREE.MeshStandardMaterial({ color: 0x228B22 })
+      new THREE.MeshStandardMaterial({ map: floorTexture })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
 
+    // === LUMIÈRE ===
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const light = new THREE.DirectionalLight(0xffffff, 0.8);
     light.position.set(10, 20, 10);
     light.castShadow = true;
     scene.add(light);
 
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    // === MURS AVEC TEXTURES ===
+    const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture });
     const walls = [];
     function addWall(x, z, w, d) {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
@@ -112,6 +129,65 @@
     addWall(6, 6, 1, 12);
     addWall(-6, 6, 1, 12);
     addWall(0, 12, 12, 1);
+
+    // === ARME (SPRITE 2D pour simplicité) ===
+    const gunSprite = loader.load('https://opengameart.org/sites/default/files/gun_sprite_preview.png'); // Exemple gratuit OpenGameArt [](grok_render_citation_card_json={"cardIds":["233013"]})
+    const gunMaterial = new THREE.SpriteMaterial({ map: gunSprite });
+    const gun = new THREE.Sprite(gunMaterial);
+    gun.position.set(0.3, -0.3, -0.5);
+    gun.scale.set(0.5, 0.5, 1);
+    camera.add(gun);
+
+    // === SONS ===
+    const shootSound = new THREE.Audio(listener);
+    shootSound.setBuffer(new THREE.AudioLoader().load('https://freesound.org/data/previews/387/387182_4187614-lq.mp3')); // Exemple gratuit Freesound pour tir [](grok_render_citation_card_json={"cardIds":["76e961"]})
+    const reloadSound = new THREE.Audio(listener);
+    reloadSound.setBuffer(new THREE.AudioLoader().load('https://freesound.org/data/previews/155/15545_15545-lq.mp3')); // Exemple gratuit Freesound pour reload [](grok_render_citation_card_json={"cardIds":["c539d4"]})
+
+    // === TIRS ===
+    const bullets = [];
+    const ammo = 30;
+    let currentAmmo = 30;
+    let isReloading = false;
+
+    function updateAmmoUI() {
+      document.getElementById('ammo').textContent = `${currentAmmo}/30`;
+    }
+
+    function shoot() {
+      if (currentAmmo <= 0 || isReloading) return;
+      currentAmmo--;
+      updateAmmoUI();
+
+      // Son
+      shootSound.play();
+
+      // Balle
+      const bulletGeo = new THREE.SphereGeometry(0.05);
+      const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+      bullet.position.copy(camera.position);
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      bullet.velocity = direction.multiplyScalar(50);
+      scene.add(bullet);
+      bullets.push(bullet);
+    }
+
+    document.addEventListener('click', shoot);
+
+    // Rechargement
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyR' && currentAmmo < 30 && !isReloading) {
+        isReloading = true;
+        reloadSound.play();
+        setTimeout(() => {
+          currentAmmo = 30;
+          updateAmmoUI();
+          isReloading = false;
+        }, 2000);
+      }
+    });
 
     // === MOUVEMENT ===
     const move = { forward: false, backward: false, left: false, right: false };
@@ -130,7 +206,7 @@
       if (e.code === 'KeyD') move.right = false;
     });
 
-    // === COLLISION ===
+    // === COLLISION JOUEUR ===
     function checkCollision() {
       const playerBox = new THREE.Box3().setFromObject(camera);
       for (const wall of walls) {
@@ -145,6 +221,7 @@
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
+      // Mouvement joueur
       if (controls.isLocked) {
         const direction = new THREE.Vector3();
         if (move.forward) direction.z -= 1;
@@ -162,12 +239,21 @@
         if (checkCollision()) camera.position.copy(oldPos);
       }
 
+      // Mouvement balles
+      bullets.forEach((bullet, i) => {
+        bullet.position.add(bullet.velocity.clone().multiplyScalar(delta));
+        if (bullet.position.length() > 100) {
+          scene.remove(bullet);
+          bullets.splice(i, 1);
+        }
+      });
+
       renderer.render(scene, camera);
     }
 
-    // Démarrage
-    debug.textContent = 'Prêt ! Clique pour jouer.';
     animate();
+    updateAmmoUI();
+    document.getElementById('debug').textContent = 'Prêt ! Clique pour jouer.';
 
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
